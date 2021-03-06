@@ -23,7 +23,6 @@
       "ssh_username": "ec2-user",
       "ami_name": "uber-instance-store-buildkite-stack-linux-{{user `arch`}}-{{isotime | clean_resource_name}}",
       "ami_description": "[Uber Instance Store] Buildkite Elastic Stack (Amazon Linux 2 LTS w/ docker)",
-      "ami_regions": ["us-west-1"],
       "vpc_id": "vpc-0e304267bc7352e38",
       "security_group_id": "sg-09c90b50a6be87d51",
       "subnet_id": "subnet-06b32c616b29667dc",
