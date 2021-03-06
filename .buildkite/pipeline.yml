@@ -1,5 +1,11 @@
 dag: true
 
+env:
+  BUILDKITE_AWS_STACK_BUCKET: "uber-web-monorepo/stacks"
+  BUILDKITE_AWS_STACK_TEMPLATE_BUCKET: "uber-web-monorepo/stack-templates"
+  BUILDKITE_VPC_ID: "vpc-0e304267bc7352e38"
+  AWS_KEYPAIR: "web-code"
+
 steps:
   - id: "lint"
     name: ":bash: Lint"
@@ -77,7 +83,7 @@ steps:
     name: ":packer: :windows:"
     command: .buildkite/steps/packer.sh windows
     timeout_in_minutes: 60
-    retry: { automatic: { limit: 3 } }
+    retry: { automatic: { limit: 1 } }
     agents:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE}"
     depends_on:
@@ -92,6 +98,15 @@ steps:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE}"
     artifact_paths: "build/aws-stack.yml"
     depends_on: "packer-windows"
+    plugins:
+      - ssh://gitolite@code.uber.internal/infra/uber-vault-buildkite-plugin#1.0.0:
+          namespace: "buildkite"
+          addr: "https://secret-gateway-production-phx.uber.internal:4130"
+          path: "buildkite"
+          method: "aws"
+          role: "staging"
+          groups:
+            - name: "common"
 
   - id: "test-windows"
     name: ":cloudformation: :windows: Test"
@@ -106,7 +121,7 @@ steps:
     name: ":packer: :linux: AMD64"
     command: .buildkite/steps/packer.sh linux
     timeout_in_minutes: 60
-    retry: { automatic: { limit: 3 } }
+    retry: { automatic: { limit: 1 } }
     agents:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE}"
     depends_on:
@@ -121,6 +136,15 @@ steps:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE}"
     artifact_paths: "build/aws-stack.yml"
     depends_on: "packer-linux-amd64"
+    plugins:
+      - ssh://gitolite@code.uber.internal/infra/uber-vault-buildkite-plugin#1.0.0:
+          namespace: "buildkite"
+          addr: "https://secret-gateway-production-phx.uber.internal:4130"
+          path: "buildkite"
+          method: "aws"
+          role: "staging"
+          groups:
+            - name: "common"
 
   - id: "test-linux-amd64"
     name: ":cloudformation: :linux: AMD64 Test"
@@ -135,7 +159,7 @@ steps:
     name: ":packer: :linux: ARM64"
     command: .buildkite/steps/packer.sh linux arm64
     timeout_in_minutes: 60
-    retry: { automatic: { limit: 3 } }
+    retry: { automatic: { limit: 1 } }
     agents:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE}"
     depends_on:
@@ -150,6 +174,15 @@ steps:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE}"
     artifact_paths: "build/aws-stack.yml"
     depends_on: "packer-linux-arm64"
+    plugins:
+      - ssh://gitolite@code.uber.internal/infra/uber-vault-buildkite-plugin#1.0.0:
+          namespace: "buildkite"
+          addr: "https://secret-gateway-production-phx.uber.internal:4130"
+          path: "buildkite"
+          method: "aws"
+          role: "staging"
+          groups:
+            - name: "common"
 
   - id: "test-linux-arm64"
     name: ":cloudformation: :linux: ARM64 Test"
@@ -160,9 +193,9 @@ steps:
       queue: "testqueue-linux-arm64-${BUILDKITE_BUILD_NUMBER}"
     depends_on: "launch-linux-arm64"
 
-  - id: "copy-ami"
-    name: ":cloudformation: 🚚 🌎"
-    command: .buildkite/steps/copy.sh
+  - id: "create-mappings"
+    name: ":cloudformation: 🗺️"
+    command: .buildkite/steps/mappings.sh
     agents:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE}"
     artifact_paths: "build/mappings.yml"
@@ -179,7 +212,7 @@ steps:
     concurrency_group: "aws-stack-publish"
     concurrency: 1
     artifact_paths: "build/*.yml"
-    depends_on: "copy-ami"
+    depends_on: "create-mappings"
 
   - id: "cleanup"
     name: "Cleanup"
